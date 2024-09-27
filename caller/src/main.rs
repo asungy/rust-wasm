@@ -1,33 +1,25 @@
-use wasmtime::{
-    Engine,
-    Instance,
-    Module,
-    Store,
-};
-use std::os::raw::c_char;
+use wasmtime::*;
 
 fn main() -> Result<(), anyhow::Error>{
     let engine = Engine::default();
-    let module = Module::from_file(&engine, "./target/wasm32-unknown-unknown/debug/client.wasm")?;
     let mut store = Store::new(&engine, ());
-    let instance = Instance::new(&mut store, &module, &[])?;
+    let module = Module::from_file(&engine, "./target/wasm32-unknown-unknown/debug/client.wasm")?;
+    let linker = Linker::new(&engine);
+    let instance = linker.instantiate(&mut store, &module)?;
 
-    // my_func
-    let my_func = instance.get_func(&mut store, "my_func")
-        .expect("`my_func` was not an exported function");
-    let my_func = my_func.typed::<(i32, i32), i32>(&store)?;
-    let result = my_func.call(&mut store, (2, 7))?;
-    println!("Answer: {}", result);
+    let memory = instance.get_memory(&mut store, "memory").unwrap();
+    let get_hello_message = instance
+        .get_typed_func::<(), i32>(&mut store, "get_hello_message")?;
+    let get_message_len = instance
+        .get_typed_func::<(), i32>(&mut store, "get_message_len")?;
 
-    // other_func
-    let other_func = instance.get_func(&mut store, "other_func")
-        .expect("`other_func` was not an exported function");
-    let other_func = other_func.typed::<(), u32>(&store)?;
-    let string_ptr = other_func.call(&mut store, ())?;
+    let message_ptr = get_hello_message.call(&mut store, ())? as usize;
+    let message_len = get_message_len.call(&mut store, ())? as usize;
 
-    let memory = instance.get_memory(&mut store, "")
-        .expect("Could not find default memory");
+    let message_bytes = memory.data(&mut store)[message_ptr..message_ptr+message_len].to_vec();
+    let message = String::from_utf8(message_bytes).unwrap();
 
+    println!("Message from WASM: {}", message);
 
     Ok(())
 }
