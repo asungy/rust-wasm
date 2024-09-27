@@ -30,6 +30,8 @@
             gcc
             gdb
             wabt
+            wasm-tools
+            wasmtime
           ];
         };
       }

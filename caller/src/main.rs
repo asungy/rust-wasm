@@ -22,7 +22,11 @@ fn main() -> Result<(), anyhow::Error>{
     // other_func
     let other_func = instance.get_func(&mut store, "other_func")
         .expect("`other_func` was not an exported function");
-    let other_func = other_func.typed::<(), *mut c_char>(&store)?;
+    let other_func = other_func.typed::<(), u32>(&store)?;
+    let string_ptr = other_func.call(&mut store, ())?;
+
+    let memory = instance.get_memory(&mut store, "")
+        .expect("Could not find default memory");
 
 
     Ok(())
